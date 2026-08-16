@@ -1,46 +1,5 @@
 import re
-
-from transformers import (
-    AutoTokenizer,
-    AutoModelForSeq2SeqLM
-)
-
-
-MODEL_NAME = "facebook/bart-large-cnn"
-
-
-tokenizer = AutoTokenizer.from_pretrained(
-    MODEL_NAME
-)
-
-model = AutoModelForSeq2SeqLM.from_pretrained(
-    MODEL_NAME
-)
-
-
-def summarize_text(text: str):
-    if not text or not text.strip():
-        return ""
-
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        max_length=1024
-    )
-
-    summary_ids = model.generate(
-        inputs["input_ids"],
-        max_length=150,
-        min_length=40,
-        num_beams=4,
-        early_stopping=True
-    )
-
-    return tokenizer.decode(
-        summary_ids[0],
-        skip_special_tokens=True
-    )
+from collections import Counter
 
 
 def split_into_chunks(
@@ -66,37 +25,174 @@ def split_into_chunks(
     return chunks
 
 
+def split_sentences(
+    text: str
+):
+    text = text.replace(
+        "\n",
+        " "
+    )
+
+    sentences = re.split(
+        r"(?<=[.!?])\s+",
+        text
+    )
+
+    return [
+        sentence.strip()
+        for sentence in sentences
+        if sentence.strip()
+    ]
+
+
+def score_sentence(
+    sentence: str,
+    word_frequency
+):
+    words = re.findall(
+        r"\b[a-zA-Z]{3,}\b",
+        sentence.lower()
+    )
+
+    if not words:
+        return 0
+
+    score = sum(
+        word_frequency.get(
+            word,
+            0
+        )
+        for word in words
+    )
+
+    return score / len(words)
+
+
+def extractive_summary(
+    text: str,
+    max_sentences: int = 5
+):
+    sentences = split_sentences(text)
+
+    if not sentences:
+        return ""
+
+    words = re.findall(
+        r"\b[a-zA-Z]{3,}\b",
+        text.lower()
+    )
+
+    stop_words = {
+        "the",
+        "and",
+        "that",
+        "this",
+        "with",
+        "from",
+        "have",
+        "will",
+        "were",
+        "been",
+        "they",
+        "their",
+        "there",
+        "about",
+        "would",
+        "could",
+        "should",
+        "which",
+        "what",
+        "when",
+        "where",
+        "into",
+        "than",
+        "then",
+        "also",
+        "just",
+        "very",
+        "some",
+        "more",
+        "your",
+        "you",
+        "our",
+        "are",
+        "for",
+        "not",
+        "but",
+        "was",
+        "has",
+        "had",
+        "its",
+        "it's"
+    }
+
+    useful_words = [
+        word
+        for word in words
+        if word not in stop_words
+    ]
+
+    frequency = Counter(
+        useful_words
+    )
+
+    scored_sentences = []
+
+    for index, sentence in enumerate(
+        sentences
+    ):
+        score = score_sentence(
+            sentence,
+            frequency
+        )
+
+        scored_sentences.append(
+            (
+                score,
+                index,
+                sentence
+            )
+        )
+
+    scored_sentences.sort(
+        reverse=True
+    )
+
+    selected = scored_sentences[
+        :max_sentences
+    ]
+
+    selected.sort(
+        key=lambda item: item[1]
+    )
+
+    return " ".join(
+        item[2]
+        for item in selected
+    )
+
+
 def extract_sentences(
     text: str,
     keywords
 ):
     sentences = []
 
-    text = text.replace(
-        "\n",
-        " "
-    )
-
-    raw_sentences = re.split(
-        r"(?<=[.!?])\s+",
+    for sentence in split_sentences(
         text
-    )
-
-    for sentence in raw_sentences:
-
-        sentence = sentence.strip()
-
-        if not sentence:
-            continue
-
-        sentence_lower = sentence.lower()
+    ):
+        sentence_lower = (
+            sentence.lower()
+        )
 
         for keyword in keywords:
 
             if keyword.lower() in sentence_lower:
 
                 if sentence not in sentences:
-                    sentences.append(sentence)
+                    sentences.append(
+                        sentence
+                    )
 
                 break
 
@@ -106,7 +202,10 @@ def extract_sentences(
 def summarize_transcript(
     transcript_text: str
 ):
-    if not transcript_text or not transcript_text.strip():
+    if (
+        not transcript_text
+        or not transcript_text.strip()
+    ):
         return {
             "summary": "",
             "key_points": [],
@@ -114,60 +213,10 @@ def summarize_transcript(
             "decisions": []
         }
 
-
-    # =====================================
-    # STEP 1: Split transcript
-    # =====================================
-
-    chunks = split_into_chunks(
-        transcript_text
+    summary = extractive_summary(
+        transcript_text,
+        max_sentences=6
     )
-
-
-    # =====================================
-    # STEP 2: Summarize each chunk
-    # =====================================
-
-    chunk_summaries = []
-
-    for chunk in chunks:
-
-        summary = summarize_text(
-            chunk
-        )
-
-        if summary:
-            chunk_summaries.append(
-                summary
-            )
-
-
-    # =====================================
-    # STEP 3: Create final summary
-    # =====================================
-
-    combined_summary = " ".join(
-        chunk_summaries
-    )
-
-
-    if not combined_summary:
-        final_summary = ""
-
-    elif len(chunk_summaries) == 1:
-
-        final_summary = combined_summary
-
-    else:
-
-        final_summary = summarize_text(
-            combined_summary
-        )
-
-
-    # =====================================
-    # STEP 4: Extract key points
-    # =====================================
 
     key_points = extract_sentences(
         transcript_text,
@@ -186,11 +235,6 @@ def summarize_transcript(
             "concern"
         ]
     )
-
-
-    # =====================================
-    # STEP 5: Extract action items
-    # =====================================
 
     action_items = extract_sentences(
         transcript_text,
@@ -212,11 +256,6 @@ def summarize_transcript(
         ]
     )
 
-
-    # =====================================
-    # STEP 6: Extract decisions
-    # =====================================
-
     decisions = extract_sentences(
         transcript_text,
         [
@@ -233,13 +272,8 @@ def summarize_transcript(
         ]
     )
 
-
-    # =====================================
-    # STEP 7: Return AI analysis
-    # =====================================
-
     return {
-        "summary": final_summary,
+        "summary": summary,
         "key_points": key_points,
         "action_items": action_items,
         "decisions": decisions

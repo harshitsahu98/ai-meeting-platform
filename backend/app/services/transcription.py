@@ -1,10 +1,29 @@
 import whisper
 
 
-model = whisper.load_model("base")
+model = None
 
 
-def transcribe_audio(file_path: str):
-    result = model.transcribe(file_path)
+def get_model():
+    global model
+
+    if model is None:
+        model = whisper.load_model(
+            "tiny",
+            device="cpu"
+        )
+
+    return model
+
+
+def transcribe_audio(
+    file_path: str
+):
+    transcription_model = get_model()
+
+    result = transcription_model.transcribe(
+        file_path,
+        fp16=False
+    )
 
     return result["text"]
