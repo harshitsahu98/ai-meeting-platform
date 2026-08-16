@@ -644,9 +644,9 @@ const MeetingDetails = () => {
                   <div
                     key={recording.id}
                     className={`rounded-lg border p-4 transition ${selectedRecording?.id ===
-                        recording.id
-                        ? "border-blue-300 bg-blue-50"
-                        : "border-slate-200 bg-white"
+                      recording.id
+                      ? "border-blue-300 bg-blue-50"
+                      : "border-slate-200 bg-white"
                       }`}
                   >
 
@@ -698,7 +698,7 @@ const MeetingDetails = () => {
                       controls
                       preload="metadata"
                       className="mt-4 w-full"
-                      src={`http://127.0.0.1:8000/${recording.audio_url}`}
+                      src={`https://ai-meeting-platform-2.onrender.com/${recording.audio_url}`}
                       onError={() => {
                         setError(
                           "Unable to play this recording."
@@ -707,7 +707,6 @@ const MeetingDetails = () => {
                     >
                       Your browser does not support audio playback.
                     </audio>
-
 
                     <div className="mt-3 flex items-center justify-between">
 
