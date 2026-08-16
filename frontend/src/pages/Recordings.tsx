@@ -445,7 +445,7 @@ const Recordings = () => {
                     controls
                     preload="metadata"
                     className="w-full"
-                    src={`http://127.0.0.1:8000/${recording.audio_url}`}
+                    src={recording.audio_url}
                     onError={() =>
                       setError(
                         "Unable to play this recording."

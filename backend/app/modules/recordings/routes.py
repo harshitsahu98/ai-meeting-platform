@@ -1,5 +1,9 @@
 import os
 import uuid
+import tempfile
+import requests
+
+from app.services.cloudinary_service import upload_audio
 
 from fastapi import (
     APIRouter,
@@ -9,32 +13,46 @@ from fastapi import (
     UploadFile,
     File
 )
+
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.core.database import get_db
+from app.core.database import SessionLocal
+
 from app.modules.meetings.model import Meeting
 from app.modules.recordings.model import Recording
 from app.modules.recordings.schema import RecordingResponse
 from app.modules.recordings.schema import RecordingCreate
 from app.modules.users.model import User
-from typing import List
 from app.modules.transcripts.model import Transcript
-from app.services.transcription import transcribe_audio
-from app.core.database import SessionLocal
 from app.modules.summary.model import Summary
+
+from app.services.transcription import transcribe_audio
 from app.services.summarization import summarize_transcript
+
+from typing import List
+
 
 router = APIRouter(
     prefix="/recordings",
     tags=["Recordings"]
-
 )
 
-def process_recording(recording_id: int):
+
+# =========================================================
+# PROCESS RECORDING
+# =========================================================
+
+def process_recording(
+    recording_id: int
+):
     db = SessionLocal()
 
+    recording = None
+
     try:
+
         recording = (
             db.query(Recording)
             .filter(
@@ -53,9 +71,47 @@ def process_recording(recording_id: int):
         recording.status = "transcribing"
         db.commit()
 
-        transcript_text = transcribe_audio(
-            recording.audio_url
+        temp_directory = tempfile.gettempdir()
+
+        file_extension = ".wav"
+
+        file_name = f"{uuid.uuid4()}{file_extension}"
+
+        file_path = os.path.join(
+            temp_directory,
+            file_name
         )
+
+        response = requests.get(
+            recording.audio_url,
+            timeout=60
+        )
+
+        response.raise_for_status()
+
+        with open(
+            file_path,
+            "wb"
+        ) as file:
+
+            file.write(
+                response.content
+            )
+
+        try:
+
+            transcript_text = transcribe_audio(
+                file_path
+            )
+
+        finally:
+
+            if os.path.exists(
+                file_path
+            ):
+                os.remove(
+                    file_path
+                )
 
         transcript = Transcript(
             recording_id=recording.id,
@@ -63,14 +119,19 @@ def process_recording(recording_id: int):
         )
 
         db.add(transcript)
+
         db.commit()
-        db.refresh(transcript)
+
+        db.refresh(
+            transcript
+        )
 
         # -------------------------
         # SUMMARIZATION
         # -------------------------
 
         recording.status = "summarizing"
+
         db.commit()
 
         summary_data = summarize_transcript(
@@ -91,7 +152,9 @@ def process_recording(recording_id: int):
             )
         )
 
-        db.add(summary)
+        db.add(
+            summary
+        )
 
         # -------------------------
         # COMPLETED
@@ -101,31 +164,40 @@ def process_recording(recording_id: int):
 
         db.commit()
 
-    except Exception:
-        db.rollback()
+    except Exception as error:
 
-        recording = (
-            db.query(Recording)
-            .filter(
-                Recording.id == recording_id
-            )
-            .first()
+        print(
+            "Recording processing failed:",
+            error
         )
 
+        db.rollback()
+
         if recording:
+
             recording.status = "failed"
+
             db.commit()
 
     finally:
+
         db.close()
 
 
-@router.post("/", response_model=RecordingResponse)
+# =========================================================
+# CREATE RECORDING
+# =========================================================
+
+@router.post(
+    "/",
+    response_model=RecordingResponse
+)
 def create_recording(
     recording: RecordingCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     meeting = (
         db.query(Meeting)
         .filter(
@@ -136,6 +208,7 @@ def create_recording(
     )
 
     if not meeting:
+
         raise HTTPException(
             status_code=404,
             detail="Meeting not found"
@@ -146,32 +219,58 @@ def create_recording(
         audio_url=recording.audio_url
     )
 
-    db.add(new_recording)
+    db.add(
+        new_recording
+    )
+
     db.commit()
-    db.refresh(new_recording)
+
+    db.refresh(
+        new_recording
+    )
 
     return new_recording
 
-@router.get("/", response_model=List[RecordingResponse])
+
+# =========================================================
+# GET ALL RECORDINGS
+# =========================================================
+
+@router.get(
+    "/",
+    response_model=List[RecordingResponse]
+)
 def get_recordings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     recordings = (
         db.query(Recording)
         .join(Meeting)
-        .filter(Meeting.user_id == current_user.id)
+        .filter(
+            Meeting.user_id == current_user.id
+        )
         .all()
     )
 
     return recordings
 
-@router.get("/{recording_id}", response_model=RecordingResponse)
+
+# =========================================================
+# GET SINGLE RECORDING
+# =========================================================
+
+@router.get(
+    "/{recording_id}",
+    response_model=RecordingResponse
+)
 def get_recording(
     recording_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     recording = (
         db.query(Recording)
         .join(Meeting)
@@ -183,6 +282,7 @@ def get_recording(
     )
 
     if not recording:
+
         raise HTTPException(
             status_code=404,
             detail="Recording not found"
@@ -190,12 +290,20 @@ def get_recording(
 
     return recording
 
-@router.delete("/{recording_id}")
+
+# =========================================================
+# DELETE RECORDING
+# =========================================================
+
+@router.delete(
+    "/{recording_id}"
+)
 def delete_recording(
     recording_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     recording = (
         db.query(Recording)
         .join(Meeting)
@@ -207,13 +315,18 @@ def delete_recording(
     )
 
     if not recording:
+
         raise HTTPException(
             status_code=404,
             detail="Recording not found"
         )
 
     try:
-        # Find all transcripts belonging to this recording
+
+        # -------------------------
+        # Find transcripts
+        # -------------------------
+
         transcripts = (
             db.query(Transcript)
             .filter(
@@ -222,22 +335,37 @@ def delete_recording(
             .all()
         )
 
-        # Delete summaries belonging to those transcripts
+        # -------------------------
+        # Delete summaries
+        # -------------------------
+
         for transcript in transcripts:
+
             db.query(Summary).filter(
                 Summary.transcript_id == transcript.id
             ).delete(
                 synchronize_session=False
             )
 
-        # Delete transcripts before deleting the recording
+        # -------------------------
+        # Delete transcripts
+        # -------------------------
+
         for transcript in transcripts:
-            db.delete(transcript)
+
+            db.delete(
+                transcript
+            )
 
         db.flush()
 
-        # Delete the recording
-        db.delete(recording)
+        # -------------------------
+        # Delete recording
+        # -------------------------
+
+        db.delete(
+            recording
+        )
 
         db.commit()
 
@@ -246,6 +374,7 @@ def delete_recording(
         }
 
     except Exception:
+
         db.rollback()
 
         raise HTTPException(
@@ -253,7 +382,15 @@ def delete_recording(
             detail="Failed to delete recording"
         )
 
-@router.post("/upload", response_model=RecordingResponse)
+
+# =========================================================
+# UPLOAD RECORDING
+# =========================================================
+
+@router.post(
+    "/upload",
+    response_model=RecordingResponse
+)
 def upload_recording(
     meeting_id: int,
     audio_file: UploadFile = File(...),
@@ -261,6 +398,7 @@ def upload_recording(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     meeting = (
         db.query(Meeting)
         .filter(
@@ -271,53 +409,110 @@ def upload_recording(
     )
 
     if not meeting:
+
         raise HTTPException(
             status_code=404,
             detail="Meeting not found"
         )
 
-    upload_directory = "uploads/recordings"
+    # -------------------------
+    # Temporary file
+    # -------------------------
 
-    os.makedirs(upload_directory, exist_ok=True)
+    temp_directory = tempfile.gettempdir()
 
-    file_extension = os.path.splitext(audio_file.filename)[1]
+    file_extension = os.path.splitext(
+        audio_file.filename
+    )[1]
+
+    if not file_extension:
+
+        file_extension = ".wav"
 
     file_name = f"{uuid.uuid4()}{file_extension}"
 
     file_path = os.path.join(
-        upload_directory,
+        temp_directory,
         file_name
     )
 
-    with open(file_path, "wb") as file:
-        file.write(audio_file.file.read())
+    with open(
+        file_path,
+        "wb"
+    ) as file:
+
+        file.write(
+            audio_file.file.read()
+        )
+
+    try:
+
+        # -------------------------
+        # Upload to Cloudinary
+        # -------------------------
+
+        audio_url = upload_audio(
+            file_path
+        )
+
+    finally:
+
+        if os.path.exists(
+            file_path
+        ):
+
+            os.remove(
+                file_path
+            )
+
+    # -------------------------
+    # Create database record
+    # -------------------------
 
     new_recording = Recording(
         meeting_id=meeting_id,
-        audio_url=file_path,
+        audio_url=audio_url,
         status="pending"
     )
 
-    db.add(new_recording)
+    db.add(
+        new_recording
+    )
+
     db.commit()
-    db.refresh(new_recording)
+
+    db.refresh(
+        new_recording
+    )
+
+    # -------------------------
+    # Background processing
+    # -------------------------
 
     background_tasks.add_task(
-    process_recording,
-    new_recording.id
-)
+        process_recording,
+        new_recording.id
+    )
 
     return new_recording
 
-@router.post("/{recording_id}/transcribe")
+
+# =========================================================
+# MANUAL TRANSCRIPTION
+# =========================================================
+
+@router.post(
+    "/{recording_id}/transcribe"
+)
 def transcribe_recording(
     recording_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # =====================================
+
+    # -------------------------
     # STEP 1: Find recording
-    # =====================================
+    # -------------------------
 
     recording = (
         db.query(Recording)
@@ -329,49 +524,88 @@ def transcribe_recording(
         .first()
     )
 
-
     if not recording:
+
         raise HTTPException(
             status_code=404,
             detail="Recording not found"
         )
 
+    # -------------------------
+    # STEP 2: Download audio
+    # -------------------------
 
-    # =====================================
-    # STEP 2: Transcribe audio
-    # =====================================
+    temp_directory = tempfile.gettempdir()
 
-    transcript_text = transcribe_audio(
-        recording.audio_url
+    file_name = f"{uuid.uuid4()}.wav"
+
+    file_path = os.path.join(
+        temp_directory,
+        file_name
     )
 
+    response = requests.get(
+        recording.audio_url,
+        timeout=60
+    )
 
-    # =====================================
+    response.raise_for_status()
+
+    with open(
+        file_path,
+        "wb"
+    ) as file:
+
+        file.write(
+            response.content
+        )
+
+    try:
+
+        transcript_text = transcribe_audio(
+            file_path
+        )
+
+    finally:
+
+        if os.path.exists(
+            file_path
+        ):
+
+            os.remove(
+                file_path
+            )
+
+    # -------------------------
     # STEP 3: Create transcript
-    # =====================================
+    # -------------------------
 
     new_transcript = Transcript(
         recording_id=recording.id,
         text=transcript_text
     )
 
-    db.add(new_transcript)
+    db.add(
+        new_transcript
+    )
+
     db.commit()
-    db.refresh(new_transcript)
 
+    db.refresh(
+        new_transcript
+    )
 
-    # =====================================
+    # -------------------------
     # STEP 4: Generate AI analysis
-    # =====================================
+    # -------------------------
 
     ai_result = summarize_transcript(
         transcript_text
     )
 
-
-    # =====================================
-    # STEP 5: Convert lists to database text
-    # =====================================
+    # -------------------------
+    # STEP 5: Convert lists
+    # -------------------------
 
     key_points_text = "\n".join(
         ai_result["key_points"]
@@ -385,10 +619,9 @@ def transcribe_recording(
         ai_result["decisions"]
     )
 
-
-    # =====================================
+    # -------------------------
     # STEP 6: Create Summary
-    # =====================================
+    # -------------------------
 
     new_summary = Summary(
         transcript_id=new_transcript.id,
@@ -398,15 +631,19 @@ def transcribe_recording(
         decisions=decisions_text
     )
 
+    db.add(
+        new_summary
+    )
 
-    db.add(new_summary)
     db.commit()
-    db.refresh(new_summary)
 
+    db.refresh(
+        new_summary
+    )
 
-    # =====================================
-    # STEP 7: Return transcript + AI data
-    # =====================================
+    # -------------------------
+    # STEP 7: Return data
+    # -------------------------
 
     return {
         "transcript": {

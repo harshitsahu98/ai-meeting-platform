@@ -698,7 +698,7 @@ const MeetingDetails = () => {
                       controls
                       preload="metadata"
                       className="mt-4 w-full"
-                      src={`https://ai-meeting-platform-2.onrender.com/${recording.audio_url}`}
+                      src={recording.audio_url}
                       onError={() => {
                         setError(
                           "Unable to play this recording."
