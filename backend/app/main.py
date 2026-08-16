@@ -29,9 +29,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://ai-meeting-platform-3.onrender.com",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,11 +43,23 @@ app.add_middleware(
 # Static uploaded files
 # =========================================
 
-os.makedirs("uploads",exist_ok=True)
+UPLOADS_DIR = os.path.join(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(__file__)
+        )
+    ),
+    "uploads"
+)
+
+os.makedirs(
+    UPLOADS_DIR,
+    exist_ok=True
+)
 
 app.mount(
     "/uploads",
-    StaticFiles(directory="uploads"),
+    StaticFiles(directory=UPLOADS_DIR),
     name="uploads"
 )
 
