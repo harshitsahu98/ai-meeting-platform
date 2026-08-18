@@ -44,12 +44,66 @@ router = APIRouter(
 # PROCESS RECORDING
 # =========================================================
 
+def download_audio(
+    audio_url: str
+):
+    temp_directory = tempfile.gettempdir()
+
+    file_name = f"{uuid.uuid4()}.audio"
+
+    file_path = os.path.join(
+        temp_directory,
+        file_name
+    )
+
+    print(
+        "Downloading recording:",
+        audio_url
+    )
+
+    response = requests.get(
+        audio_url,
+        stream=True,
+        timeout=(30, 300)
+    )
+
+    response.raise_for_status()
+
+    try:
+
+        with open(
+            file_path,
+            "wb"
+        ) as file:
+
+            for chunk in response.iter_content(
+                chunk_size=1024 * 1024
+            ):
+
+                if chunk:
+
+                    file.write(
+                        chunk
+                    )
+
+    finally:
+
+        response.close()
+
+    print(
+        "Audio download completed:",
+        file_path
+    )
+
+    return file_path
+
 def process_recording(
     recording_id: int
 ):
     db = SessionLocal()
 
     recording = None
+    file_path = None
 
     try:
 
@@ -69,56 +123,43 @@ def process_recording(
         # -------------------------
 
         recording.status = "transcribing"
+
         db.commit()
 
-        temp_directory = tempfile.gettempdir()
-
-        file_extension = ".wav"
-
-        file_name = f"{uuid.uuid4()}{file_extension}"
-
-        file_path = os.path.join(
-            temp_directory,
-            file_name
+        file_path = download_audio(
+            recording.audio_url
         )
 
-        response = requests.get(
-            recording.audio_url,
-            timeout=60
+        transcript_text = transcribe_audio(
+            file_path
         )
 
-        response.raise_for_status()
+        # -------------------------
+        # CLEAN AUDIO
+        # -------------------------
 
-        with open(
-            file_path,
-            "wb"
-        ) as file:
+        if os.path.exists(
+            file_path
+        ):
 
-            file.write(
-                response.content
-            )
-
-        try:
-
-            transcript_text = transcribe_audio(
+            os.remove(
                 file_path
             )
 
-        finally:
+            file_path = None
 
-            if os.path.exists(
-                file_path
-            ):
-                os.remove(
-                    file_path
-                )
+        # -------------------------
+        # SAVE TRANSCRIPT
+        # -------------------------
 
         transcript = Transcript(
             recording_id=recording.id,
             text=transcript_text
         )
 
-        db.add(transcript)
+        db.add(
+            transcript
+        )
 
         db.commit()
 
@@ -164,22 +205,54 @@ def process_recording(
 
         db.commit()
 
+        print(
+            f"Recording {recording_id} processed successfully"
+        )
+
     except Exception as error:
 
         print(
-            "Recording processing failed:",
-            error
+            f"Recording {recording_id} processing failed:",
+            repr(error)
         )
 
         db.rollback()
 
         if recording:
 
-            recording.status = "failed"
+            try:
 
-            db.commit()
+                recording.status = "failed"
+
+                db.commit()
+
+            except Exception as status_error:
+
+                print(
+                    "Failed to update recording status:",
+                    repr(status_error)
+                )
+
+                db.rollback()
 
     finally:
+
+        if file_path and os.path.exists(
+            file_path
+        ):
+
+            try:
+
+                os.remove(
+                    file_path
+                )
+
+            except Exception as cleanup_error:
+
+                print(
+                    "Temporary file cleanup failed:",
+                    repr(cleanup_error)
+                )
 
         db.close()
 
@@ -535,30 +608,9 @@ def transcribe_recording(
     # STEP 2: Download audio
     # -------------------------
 
-    temp_directory = tempfile.gettempdir()
-
-    file_name = f"{uuid.uuid4()}.wav"
-
-    file_path = os.path.join(
-        temp_directory,
-        file_name
-    )
-
-    response = requests.get(
-        recording.audio_url,
-        timeout=60
-    )
-
-    response.raise_for_status()
-
-    with open(
-        file_path,
-        "wb"
-    ) as file:
-
-        file.write(
-            response.content
-        )
+    file_path = download_audio(
+    recording.audio_url
+)
 
     try:
 
