@@ -1,4 +1,4 @@
-const API_URL = "https://ai-meeting-platform-2.onrender.com"
+const API_URL = "https://ai-meeting-platform-docker.onrender.com"
 
 
 // ==============================
