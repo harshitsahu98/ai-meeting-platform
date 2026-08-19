@@ -9,14 +9,10 @@ RUN apt-get update \
 COPY backend/requirements-full.txt ./requirements-full.txt
 
 RUN pip install --no-cache-dir \
-    --index-url https://download.pytorch.org/whl/cpu \
-    torch
-
-RUN pip install --no-cache-dir \
     -r requirements-full.txt
 
 COPY backend ./backend
 
 WORKDIR /app/backend
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh","-c","uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

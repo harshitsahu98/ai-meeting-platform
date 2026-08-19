@@ -4,18 +4,15 @@ import shutil
 import subprocess
 import tempfile
 
-import whisper
+from faster_whisper import WhisperModel
 
 
 def transcribe_audio(
     file_path: str
 ):
-    model = whisper.load_model(
-        "tiny",
-        device="cpu"
-    )
-
     chunk_directory = tempfile.mkdtemp()
+
+    model = None
 
     try:
 
@@ -25,7 +22,7 @@ def transcribe_audio(
         )
 
         print(
-            "Splitting audio into 10-minute chunks..."
+            "Splitting audio into 5-minute chunks..."
         )
 
         subprocess.run(
@@ -36,7 +33,7 @@ def transcribe_audio(
                 "-f",
                 "segment",
                 "-segment_time",
-                "600",
+                "300",
                 "-ar",
                 "16000",
                 "-ac",
@@ -67,14 +64,26 @@ def transcribe_audio(
                 "FFmpeg did not create any audio chunks"
             )
 
+        print(
+            f"Created {len(chunk_files)} audio chunks"
+        )
+
+        print(
+            "Loading faster-whisper tiny INT8 model..."
+        )
+
+        model = WhisperModel(
+            "tiny",
+            device="cpu",
+            compute_type="int8",
+            cpu_threads=1,
+            num_workers=1
+        )
+
         transcripts = []
 
         total_chunks = len(
             chunk_files
-        )
-
-        print(
-            f"Created {total_chunks} audio chunks"
         )
 
         for index, chunk_file in enumerate(
@@ -86,21 +95,25 @@ def transcribe_audio(
                 f"Transcribing chunk {index}/{total_chunks}"
             )
 
-            result = model.transcribe(
+            segments, info = model.transcribe(
                 chunk_file,
-                fp16=False
+                beam_size=1,
+                condition_on_previous_text=False
             )
 
-            text = result.get(
-                "text",
-                ""
-            ).strip()
+            chunk_text = " ".join(
+                segment.text.strip()
+                for segment in segments
+                if segment.text.strip()
+            )
 
-            if text:
+            if chunk_text:
 
                 transcripts.append(
-                    text
+                    chunk_text
                 )
+
+            gc.collect()
 
         final_transcript = "\n\n".join(
             transcripts
@@ -120,11 +133,15 @@ def transcribe_audio(
 
     finally:
 
+        if model is not None:
+
+            del model
+
+        gc.collect()
+
         shutil.rmtree(
             chunk_directory,
             ignore_errors=True
         )
-
-        del model
 
         gc.collect()
