@@ -1,20 +1,34 @@
-import gc
 import os
 import shutil
 import subprocess
 import tempfile
 
-from faster_whisper import WhisperModel
+from dotenv import load_dotenv
+from groq import Groq
 
+
+load_dotenv()
 
 def transcribe_audio(
     file_path: str
 ):
     chunk_directory = tempfile.mkdtemp()
 
-    model = None
-
     try:
+
+        groq_api_key = os.getenv(
+            "GROQ_API_KEY"
+        )
+
+        if not groq_api_key:
+
+            raise RuntimeError(
+                "GROQ_API_KEY is not configured"
+            )
+
+        client = Groq(
+            api_key=groq_api_key
+        )
 
         chunk_pattern = os.path.join(
             chunk_directory,
@@ -68,18 +82,6 @@ def transcribe_audio(
             f"Created {len(chunk_files)} audio chunks"
         )
 
-        print(
-            "Loading faster-whisper tiny INT8 model..."
-        )
-
-        model = WhisperModel(
-            "tiny",
-            device="cpu",
-            compute_type="int8",
-            cpu_threads=1,
-            num_workers=1
-        )
-
         transcripts = []
 
         total_chunks = len(
@@ -95,17 +97,22 @@ def transcribe_audio(
                 f"Transcribing chunk {index}/{total_chunks}"
             )
 
-            segments, info = model.transcribe(
+            with open(
                 chunk_file,
-                beam_size=1,
-                condition_on_previous_text=False
-            )
+                "rb"
+            ) as audio_file:
 
-            chunk_text = " ".join(
-                segment.text.strip()
-                for segment in segments
-                if segment.text.strip()
-            )
+                transcription = (
+                    client.audio.transcriptions.create(
+                        file=audio_file,
+                        model="whisper-large-v3-turbo",
+                        response_format="text"
+                    )
+                )
+
+            chunk_text = str(
+                transcription
+            ).strip()
 
             if chunk_text:
 
@@ -113,7 +120,9 @@ def transcribe_audio(
                     chunk_text
                 )
 
-            gc.collect()
+            print(
+                f"Completed chunk {index}/{total_chunks}"
+            )
 
         final_transcript = "\n\n".join(
             transcripts
@@ -122,7 +131,7 @@ def transcribe_audio(
         if not final_transcript:
 
             raise RuntimeError(
-                "Whisper returned an empty transcript"
+                "Groq Whisper returned an empty transcript"
             )
 
         print(
@@ -133,15 +142,7 @@ def transcribe_audio(
 
     finally:
 
-        if model is not None:
-
-            del model
-
-        gc.collect()
-
         shutil.rmtree(
             chunk_directory,
             ignore_errors=True
         )
-
-        gc.collect()
