@@ -2,7 +2,7 @@
 
 > **Record. Transcribe. Understand. Act.**
 
-An AI-powered meeting platform that transforms recorded meetings into searchable, structured insights. Upload meeting recordings, automatically transcribe them with **OpenAI Whisper**, and generate AI-powered **summaries, key points, action items, and decisions** — all through a modern React interface.
+An AI-powered meeting intelligence platform that transforms recorded meetings into structured, actionable insights. Upload meeting recordings, store them securely with **Cloudinary**, transcribe audio using the **Groq API**, and analyze the generated transcripts with **Groq-powered LLMs** to produce concise **summaries, key points, action items, and decisions** — all through a modern React and TypeScript interface.
 
 🌐 **Live Demo:** https://ai-meeting-platform-3.onrender.com
 
@@ -20,7 +20,7 @@ An AI-powered meeting platform that transforms recorded meetings into searchable
 
 ### 📝 Automatic Transcription
 
-* Audio transcription powered by **OpenAI Whisper**
+* Audio transcription powered by **Groq API**
 * Supports long meeting recordings
 * Automatic audio downloading and temporary processing
 * FFmpeg-based audio processing
@@ -69,11 +69,11 @@ Download Audio
       ↓
 FFmpeg / Audio Processing
       ↓
-Whisper Transcription
+Groq API Transcription
       ↓
 Transcript Database Record
       ↓
-AI Summarization
+Groq LLM Summarization
       ↓
 Summary Database Record
       ↓
@@ -85,7 +85,7 @@ Completed
 # 🏗️ Architecture
 
 ```text
-                         ┌──────────────────────┐
+                                                 ┌──────────────────────┐
                          │      React + Vite    │
                          │      Frontend        │
                          └──────────┬───────────┘
@@ -93,21 +93,22 @@ Completed
                                     │ REST API
                                     ▼
                          ┌──────────────────────┐
-                         │     FastAPI          │
-                         │     Backend          │
+                         │      FastAPI         │
+                         │      Backend         │
                          └──────────┬───────────┘
                                     │
                  ┌──────────────────┼──────────────────┐
                  │                  │                  │
                  ▼                  ▼                  ▼
         ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
-        │   PostgreSQL   │  │   Cloudinary   │  │    Whisper     │
+        │   PostgreSQL   │  │   Cloudinary   │  │    Groq API    │
         │    Database    │  │ Audio Storage  │  │ Transcription  │
         └────────────────┘  └────────────────┘  └───────┬────────┘
                                                         │
                                                         ▼
                                                 ┌───────────────┐
-                                                │ AI Summarizer │
+                                                │   Groq LLM    │
+                                                │ Summarization │
                                                 └───────────────┘
 ```
 
@@ -137,11 +138,11 @@ Completed
 
 ## AI & Audio
 
-| Technology       | Purpose                         |
-| ---------------- | ------------------------------- |
-| OpenAI Whisper   | Speech-to-text transcription    |
-| FFmpeg           | Audio processing                |
-| AI summarization | Meeting intelligence generation |
+| Technology | Purpose |
+| ---------- | ------- |
+| Groq API | Speech-to-text transcription |
+| FFmpeg | Audio processing |
+| Groq LLM | Meeting intelligence and summarization |
 
 ## Infrastructure
 
@@ -267,7 +268,7 @@ failed
 
 ### 5. Transcription
 
-The backend downloads the audio from its Cloudinary URL and passes the file to Whisper.
+The backend downloads the audio from its Cloudinary URL, processes it with FFmpeg when required, and sends the audio to the Groq API for transcription.
 
 ```python
 transcript_text = transcribe_audio(
@@ -287,7 +288,7 @@ Recording
 
 ### 7. AI Analysis
 
-The transcript is passed to the summarization service.
+The generated transcript is passed to the Groq LLM for AI-powered meeting analysis and summarization.
 
 The result is structured into:
 
@@ -535,6 +536,7 @@ CLOUDINARY_API_KEY
 CLOUDINARY_API_SECRET
 CLOUDINARY_CLOUD_NAME
 SECRET_KEY
+GROQ_API_KEY
 ```
 
 Add any additional API keys required by the summarization implementation.
@@ -554,7 +556,9 @@ FastAPI
    +
 PostgreSQL
    +
-Whisper
+Groq API
+   +
+Groq LLM
    +
 FFmpeg
    +
@@ -563,7 +567,7 @@ Cloudinary
 Render
 ```
 
-Whisper runs locally inside the backend rather than requiring a separate transcription API.
+Transcription is handled through the Groq API, while the Groq LLM processes the transcript to generate structured meeting insights.
 
 This makes the architecture suitable for experimentation, learning, portfolio demonstrations, and free-tier deployments where available.
 
@@ -582,36 +586,16 @@ Cloud Audio URL
        ↓
 Temporary Local Audio File
        ↓
-FFmpeg
+FFmpeg / Audio Processing
        ↓
-Whisper
+Groq API Transcription
        ↓
 Transcript
        ↓
-AI Summary
+Groq LLM Summarization
+       ↓
+AI Meeting Insights
 ```
-
-The backend uses temporary files rather than attempting to keep the complete recording in application memory.
-
-Whisper is configured for CPU-compatible execution:
-
-```python
-model = whisper.load_model(
-    "tiny",
-    device="cpu"
-)
-```
-
-and:
-
-```python
-result = model.transcribe(
-    file_path,
-    fp16=False
-)
-```
-
-This makes the implementation compatible with CPU-based deployment environments.
 
 ---
 
