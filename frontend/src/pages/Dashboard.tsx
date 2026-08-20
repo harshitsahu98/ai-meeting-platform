@@ -72,38 +72,41 @@ const Dashboard = () => {
     .slice(0, 4)
 
   return (
-    <main className="flex-1 p-8">
+    <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">
 
       {/* Header */}
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
-        <div>
+        <div className="min-w-0">
+
           <p className="text-sm font-medium text-blue-600">
             Workspace
           </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-slate-900">
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">
             Dashboard
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
             Your meeting intelligence at a glance.
           </p>
+
         </div>
 
-        <div className="flex gap-3">
+
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
 
           <button
             onClick={() => navigate("/meetings")}
-            className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="w-full rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
           >
             View Meetings
           </button>
 
           <button
             onClick={() => navigate("/meetings")}
-            className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="w-full rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
           >
             + New Meeting
           </button>
@@ -116,7 +119,7 @@ const Dashboard = () => {
       {/* Error */}
 
       {error && (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mt-6 break-words rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -126,7 +129,7 @@ const Dashboard = () => {
 
       {loading ? (
 
-        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm sm:p-10">
           Loading dashboard...
         </div>
 
@@ -136,9 +139,9 @@ const Dashboard = () => {
 
           {/* Statistics */}
 
-          <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <p className="text-sm font-medium text-slate-500">
                 Total Meetings
@@ -155,7 +158,7 @@ const Dashboard = () => {
             </div>
 
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <p className="text-sm font-medium text-slate-500">
                 Recordings
@@ -172,7 +175,7 @@ const Dashboard = () => {
             </div>
 
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <p className="text-sm font-medium text-slate-500">
                 Completed
@@ -189,7 +192,7 @@ const Dashboard = () => {
             </div>
 
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <p className="text-sm font-medium text-slate-500">
                 Processing
@@ -210,15 +213,16 @@ const Dashboard = () => {
 
           {/* Main Content */}
 
-          <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="mt-6 grid min-w-0 grid-cols-1 gap-5 sm:mt-8 sm:gap-6 xl:grid-cols-3">
 
             {/* Recent Meetings */}
 
-            <div className="xl:col-span-2 rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:col-span-2">
 
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-5 sm:px-6">
 
-                <div>
+                <div className="min-w-0">
+
                   <h2 className="text-lg font-semibold text-slate-900">
                     Recent Meetings
                   </h2>
@@ -226,11 +230,12 @@ const Dashboard = () => {
                   <p className="mt-1 text-sm text-slate-500">
                     Your latest meetings
                   </p>
+
                 </div>
 
                 <button
                   onClick={() => navigate("/meetings")}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                  className="shrink-0 text-sm font-medium text-blue-600 hover:text-blue-700"
                 >
                   View all →
                 </button>
@@ -240,7 +245,7 @@ const Dashboard = () => {
 
               {recentMeetings.length === 0 ? (
 
-                <div className="px-6 py-12 text-center">
+                <div className="px-4 py-12 text-center sm:px-6">
 
                   <p className="text-sm text-slate-500">
                     No meetings yet.
@@ -268,10 +273,10 @@ const Dashboard = () => {
                           `/meetings/${meeting.id}`
                         )
                       }
-                      className="flex w-full items-center justify-between px-6 py-5 text-left transition hover:bg-slate-50"
+                      className="flex w-full min-w-0 items-center justify-between gap-4 px-4 py-5 text-left transition hover:bg-slate-50 sm:px-6"
                     >
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
 
                         <h3 className="truncate text-sm font-semibold text-slate-900">
                           {meeting.title}
@@ -285,7 +290,7 @@ const Dashboard = () => {
                       </div>
 
 
-                      <div className="ml-6 shrink-0 text-right">
+                      <div className="shrink-0 text-right">
 
                         <p className="text-xs font-medium text-slate-500">
                           {new Date(
@@ -312,9 +317,9 @@ const Dashboard = () => {
 
             {/* AI Intelligence */}
 
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 
-              <div className="border-b border-slate-100 px-6 py-5">
+              <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
 
                 <h2 className="text-lg font-semibold text-slate-900">
                   AI Intelligence
@@ -327,9 +332,9 @@ const Dashboard = () => {
               </div>
 
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
 
-                <div className="rounded-xl bg-blue-50 p-5">
+                <div className="rounded-xl bg-blue-50 p-4 sm:p-5">
 
                   <p className="text-sm font-semibold text-blue-900">
                     Ready for analysis
@@ -347,39 +352,39 @@ const Dashboard = () => {
 
                 <div className="mt-6 space-y-4">
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
 
                     <span className="text-sm text-slate-500">
                       Completed recordings
                     </span>
 
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="shrink-0 text-sm font-semibold text-slate-900">
                       {completedRecordings}
                     </span>
 
                   </div>
 
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
 
                     <span className="text-sm text-slate-500">
                       Total recordings
                     </span>
 
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="shrink-0 text-sm font-semibold text-slate-900">
                       {recordings.length}
                     </span>
 
                   </div>
 
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
 
                     <span className="text-sm text-slate-500">
                       Meetings
                     </span>
 
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="shrink-0 text-sm font-semibold text-slate-900">
                       {meetings.length}
                     </span>
 
@@ -404,11 +409,12 @@ const Dashboard = () => {
 
           {/* Recent Recordings */}
 
-          <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="mt-5 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:mt-6">
 
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+            <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
 
               <div>
+
                 <h2 className="text-lg font-semibold text-slate-900">
                   Recent Recordings
                 </h2>
@@ -416,6 +422,7 @@ const Dashboard = () => {
                 <p className="mt-1 text-sm text-slate-500">
                   Latest uploaded meeting audio
                 </p>
+
               </div>
 
             </div>
@@ -423,29 +430,29 @@ const Dashboard = () => {
 
             {recentRecordings.length === 0 ? (
 
-              <div className="px-6 py-10 text-center text-sm text-slate-500">
+              <div className="px-4 py-10 text-center text-sm text-slate-500 sm:px-6">
                 No recordings uploaded yet.
               </div>
 
             ) : (
 
-              <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
 
                 {recentRecordings.map((recording) => (
 
                   <div
                     key={recording.id}
-                    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                    className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4"
                   >
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex min-w-0 items-center justify-between gap-3">
 
-                      <span className="text-sm font-semibold text-slate-900">
+                      <span className="min-w-0 truncate text-sm font-semibold text-slate-900">
                         Recording #{recording.id}
                       </span>
 
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
                           recording.status?.toLowerCase() ===
                           "completed"
                             ? "bg-green-100 text-green-700"
@@ -490,7 +497,7 @@ const Dashboard = () => {
 
           {/* Quick Actions */}
 
-          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
 
             <h2 className="text-lg font-semibold text-slate-900">
               Quick Actions
@@ -501,7 +508,7 @@ const Dashboard = () => {
             </p>
 
 
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
               <button
                 onClick={() => navigate("/meetings")}

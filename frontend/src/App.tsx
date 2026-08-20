@@ -28,54 +28,94 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen w-full bg-slate-50">
+
+      {/* Responsive Sidebar */}
+
       <Sidebar />
 
-      <main className="flex-1">
+
+      {/* Main Application Content */}
+
+      <main className="min-w-0 flex-1 pt-16 md:pt-0">
+
         <Routes>
+
+          {/* Dashboard */}
+
           <Route
             path="/"
             element={<Dashboard />}
           />
 
-          <Route path="/ai-insights" element={<AIInsights />} />
+
+          {/* AI Insights */}
+
+          <Route
+            path="/ai-insights"
+            element={<AIInsights />}
+          />
+
+
+          {/* Analytics */}
 
           <Route
             path="/analytics"
             element={<Analytics />}
           />
 
+
+          {/* Profile */}
+
           <Route
             path="/profile"
             element={<Profile />}
           />
+
+
+          {/* Settings */}
 
           <Route
             path="/settings"
             element={<Settings />}
           />
 
+
+          {/* Transcripts */}
+
           <Route
             path="/transcripts"
             element={<Transcripts />}
           />
+
+
+          {/* Recordings */}
 
           <Route
             path="/recordings"
             element={<Recordings />}
           />
 
+
+          {/* Meetings */}
+
           <Route
             path="/meetings"
             element={<Meetings />}
           />
 
+
+          {/* Meeting Details */}
+
           <Route
             path="/meetings/:meetingId"
             element={<MeetingDetails />}
           />
+
         </Routes>
+
       </main>
+
     </div>
   )
 }
@@ -84,7 +124,10 @@ function ProtectedLayout() {
 function App() {
   return (
     <BrowserRouter>
+
       <Routes>
+
+        {/* Authentication */}
 
         <Route
           path="/login"
@@ -96,12 +139,16 @@ function App() {
           element={<Register />}
         />
 
+
+        {/* Protected Application */}
+
         <Route
           path="/*"
           element={<ProtectedLayout />}
         />
 
       </Routes>
+
     </BrowserRouter>
   )
 }
